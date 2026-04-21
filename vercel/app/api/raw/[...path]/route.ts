@@ -6,9 +6,9 @@ export const runtime = 'edge';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: { path: string[] } }
 ) {
-  const { path } = await params;
+  const { path } = params;
   const pathStr = path.join('/');
   
   if (!CLOUDFLARE_WORKER_URL) {
