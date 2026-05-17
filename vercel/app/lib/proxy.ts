@@ -97,29 +97,29 @@ export async function handleRequest(
       responseHeaders.set("Cache-Control", "public, max-age=300"); // 5 minutes for HTML
     }
 
-    // 重写HTML内容中的GitHub域名，替换为代理地址
-    if (contentType.includes("text/html") && response.body && PROXY_DOMAIN && CLOUDFLARE_WORKER_URL) {
-      const text = await response.text();
-      // 替换所有github.com链接
-      let modified = text.replace(/https:\/\/github\.com\//g, `https://${PROXY_DOMAIN}/`);
-      // 替换raw.githubusercontent.com链接
-      modified = modified.replace(/https:\/\/raw\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/raw/`);
-      // 替换gist.githubusercontent.com链接
-      modified = modified.replace(/https:\/\/gist\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/gist/`);
-      // 替换github.githubassets.com静态资源链接，统一走代理域名/assets/路径
-      modified = modified.replace(/https:\/\/github\.githubassets\.com\//g, `https://${PROXY_DOMAIN}/assets/`);
-      // 替换api.github.com接口链接，直接走Worker代理
-      modified = modified.replace(/https:\/\/api\.github\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://api.github.com/`);
+    // 暂时关闭HTML内容替换，避免破坏JS逻辑，后续优化更精确的替换规则
+    // if (contentType.includes("text/html") && response.body && PROXY_DOMAIN && CLOUDFLARE_WORKER_URL) {
+    //   const text = await response.text();
+    //   // 替换所有github.com链接
+    //   let modified = text.replace(/https:\/\/github\.com\//g, `https://${PROXY_DOMAIN}/`);
+    //   // 替换raw.githubusercontent.com链接
+    //   modified = modified.replace(/https:\/\/raw\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/raw/`);
+    //   // 替换gist.githubusercontent.com链接
+    //   modified = modified.replace(/https:\/\/gist\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/gist/`);
+    //   // 替换github.githubassets.com静态资源链接，统一走代理域名/assets/路径
+    //   modified = modified.replace(/https:\/\/github\.githubassets\.com\//g, `https://${PROXY_DOMAIN}/assets/`);
+    //   // 替换api.github.com接口链接，直接走Worker代理
+    //   modified = modified.replace(/https:\/\/api\.github\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://api.github.com/`);
 
-      // 更新Content-Length头
-      responseHeaders.set("Content-Length", Buffer.byteLength(modified).toString());
+    //   // 更新Content-Length头
+    //   responseHeaders.set("Content-Length", Buffer.byteLength(modified).toString());
 
-      return new NextResponse(modified, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-      });
-    }
+    //   return new NextResponse(modified, {
+    //     status: response.status,
+    //     statusText: response.statusText,
+    //     headers: responseHeaders,
+    //   });
+    // }
 
     return new NextResponse(response.body, {
       status: response.status,
