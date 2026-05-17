@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { handleRequest } from "../../github/[...path]/route";
+import { handleRequest } from "../../../lib/proxy";
 
 export const runtime = "edge";
 
