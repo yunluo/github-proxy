@@ -76,10 +76,22 @@ export default {
 
       // 仅当原响应没有Cache-Control时才设置默认缓存策略
       const respHeaders = new Headers(githubResponse.headers);
-      if (!respHeaders.get('Cache-Control')) {
+
+      // 针对github.githubassets.com静态资源设置超长缓存（30天），这些资源文件名带哈希，永远不会变
+      if (targetUrlObj.hostname === 'github.githubassets.com') {
+        respHeaders.set('Cache-Control', 'public, max-age=2592000, immutable'); // 30天 + immutable标记，浏览器不用重新验证
+        respHeaders.set('X-Cache-Type', 'GitHub-Static-Asset');
+      }
+      // 针对GitHub API设置短缓存，避免数据过时
+      else if (targetUrlObj.hostname === 'api.github.com') {
+        respHeaders.set('Cache-Control', 'public, max-age=60'); // 缓存1分钟
+        respHeaders.set('X-Cache-Type', 'GitHub-API');
+      }
+      // 其他资源使用默认缓存策略
+      else if (!respHeaders.get('Cache-Control')) {
         const isStaticAsset = contentType.startsWith('image/') || contentType.startsWith('text/css') || contentType.startsWith('application/javascript') || contentType.startsWith('font/');
         respHeaders.set('Cache-Control', isStaticAsset
-          ? 'public, max-age=604800'  // 7 days for static assets
+          ? 'public, max-age=604800'  // 7 days for other static assets
           : 'public, max-age=3600',   // 1 hour for HTML/JSON
         );
       }

@@ -43,7 +43,7 @@ export async function handleRequest(
     const response = await fetch(forwardUrl, {
       method: request.method,
       headers: forwardHeaders,
-      body: request.body,
+      body: (request.method !== 'GET' && request.method !== 'HEAD') ? request.body : undefined,
       cache: "default",
     });
 
@@ -85,6 +85,7 @@ export async function handleRequest(
     responseHeaders.set("X-Proxy", "Vercel-Edge");
     responseHeaders.delete("x-frame-options"); // 允许嵌入iframe
     responseHeaders.delete("content-security-policy"); // 移除GitHub的CSP限制
+    responseHeaders.delete("content-security-policy-report-only");
 
     // 缓存控制
     const contentType = responseHeaders.get("Content-Type") || "";
@@ -92,6 +93,30 @@ export async function handleRequest(
       responseHeaders.set("Cache-Control", "public, max-age=604800"); // 7 days
     } else if (contentType.startsWith("text/html")) {
       responseHeaders.set("Cache-Control", "public, max-age=300"); // 5 minutes for HTML
+    }
+
+    // 重写HTML内容中的GitHub域名，替换为代理地址
+    if (contentType.includes("text/html") && response.body && PROXY_DOMAIN && CLOUDFLARE_WORKER_URL) {
+      const text = await response.text();
+      // 替换所有github.com链接
+      let modified = text.replace(/https:\/\/github\.com\//g, `https://${PROXY_DOMAIN}/`);
+      // 替换raw.githubusercontent.com链接
+      modified = modified.replace(/https:\/\/raw\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/raw/`);
+      // 替换gist.githubusercontent.com链接
+      modified = modified.replace(/https:\/\/gist\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/gist/`);
+      // 替换github.githubassets.com静态资源链接，直接走Worker代理
+      modified = modified.replace(/https:\/\/github\.githubassets\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://github.githubassets.com/`);
+      // 替换api.github.com接口链接，直接走Worker代理
+      modified = modified.replace(/https:\/\/api\.github\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://api.github.com/`);
+
+      // 更新Content-Length头
+      responseHeaders.set("Content-Length", Buffer.byteLength(modified).toString());
+
+      return new NextResponse(modified, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
     }
 
     return new NextResponse(response.body, {
