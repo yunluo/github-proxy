@@ -21,13 +21,14 @@ export async function handleRequest(
   }
 
   let targetUrl: string;
-  // 使用URL构造函数安全拼接路径，避免路径重复和斜杠问题
+  // 稳妥的字符串拼接，自动去掉开头多余的斜杠，避免路径错误
+  const cleanPath = fullPath.replace(/^\/+/, '');
   if (type === "github") {
-    targetUrl = new URL(fullPath, "https://github.com/").toString();
+    targetUrl = `https://github.com/${cleanPath}`;
   } else if (type === "raw") {
-    targetUrl = new URL(fullPath, "https://raw.githubusercontent.com/").toString();
+    targetUrl = `https://raw.githubusercontent.com/${cleanPath}`;
   } else { // gist
-    targetUrl = new URL(fullPath, "https://gist.githubusercontent.com/").toString();
+    targetUrl = `https://gist.githubusercontent.com/${cleanPath}`;
   }
   const forwardUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(targetUrl)}`;
 
