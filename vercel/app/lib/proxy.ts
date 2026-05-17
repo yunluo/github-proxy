@@ -21,12 +21,13 @@ export async function handleRequest(
   }
 
   let targetUrl: string;
+  // 使用URL构造函数安全拼接路径，避免路径重复和斜杠问题
   if (type === "github") {
-    targetUrl = `https://github.com/${fullPath}`;
+    targetUrl = new URL(fullPath, "https://github.com/").toString();
   } else if (type === "raw") {
-    targetUrl = `https://raw.githubusercontent.com/${fullPath}`;
+    targetUrl = new URL(fullPath, "https://raw.githubusercontent.com/").toString();
   } else { // gist
-    targetUrl = `https://gist.githubusercontent.com/${fullPath}`;
+    targetUrl = new URL(fullPath, "https://gist.githubusercontent.com/").toString();
   }
   const forwardUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(targetUrl)}`;
 
