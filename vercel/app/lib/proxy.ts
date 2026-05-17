@@ -70,6 +70,14 @@ export async function handleRequest(
           `https://${PROXY_DOMAIN}/api/gist/`,
         );
         responseHeaders.set("location", newLocation);
+      } else if (location.startsWith("https://github.githubassets.com/")) {
+        // 静态资源直接走Worker代理
+        const forwardUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(location)}`;
+        responseHeaders.set("location", forwardUrl);
+      } else if (location.startsWith("https://api.github.com/")) {
+        // API请求直接走Worker代理
+        const forwardUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(location)}`;
+        responseHeaders.set("location", forwardUrl);
       }
     }
 

@@ -1,0 +1,54 @@
+import { NextRequest } from "next/server";
+import { handleRequest } from "../lib/proxy";
+
+export const runtime = "edge";
+
+// 处理所有根路径下的请求，包括子路径
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function HEAD(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}
+
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } },
+) {
+  return handleRequest(request, { params: { path: params.path || [] } }, "github");
+}

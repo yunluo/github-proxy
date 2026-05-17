@@ -13,7 +13,13 @@ export default {
       }
 
       // 域名白名单校验，防止SSRF攻击
-      const allowedDomains = ['github.com', 'raw.githubusercontent.com', 'gist.githubusercontent.com'];
+      const allowedDomains = [
+        'github.com',
+        'raw.githubusercontent.com',
+        'gist.githubusercontent.com',
+        'github.githubassets.com',
+        'api.github.com'
+      ];
       const targetUrlObj = new URL(targetUrl);
       if (!allowedDomains.includes(targetUrlObj.hostname)) {
         return new Response('Invalid target domain', { status: 403 });
