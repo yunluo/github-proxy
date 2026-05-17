@@ -35,24 +35,40 @@ git config --global url."https://你的代理域名/".insteadOf "https://github.
 
 ## 🔧 部署配置
 
-### 环境变量
-需要在 Vercel 中配置以下环境变量：
-- `CLOUDFLARE_WORKER_URL`：你部署的 Cloudflare Worker 地址（必填）
-- `PROXY_DOMAIN`：你的代理服务域名（必填，用于重定向替换）
-- `GITHUB_TOKEN`：GitHub 个人访问令牌（可选，用于提升 API 请求限额）
+### 环境变量配置
+#### Vercel 环境变量
+- `CLOUDFLARE_WORKER_URL`：你部署的 Cloudflare Worker 地址（必填，格式如 `https://xxx.xxx.workers.dev`）
+- `PROXY_DOMAIN`：你的代理服务域名（必填，用于重定向替换，如 `gh.yourdomain.com`，不需要 https 前缀）
+
+#### Cloudflare Worker 环境变量
+- `GITHUB_TOKEN`：GitHub 个人访问令牌（可选，用于提升 API 请求限额，避免频繁访问被限流）
 
 ### 部署步骤
-1. 部署 Cloudflare Worker：
-   ```bash
-   cd cloudflare-worker && npm install && npm run deploy
-   ```
-2. 部署完成后记录 Worker URL
-3. 在 Vercel 项目中配置上述环境变量
-4. 部署 Vercel 项目：
-   ```bash
-   cd vercel && npm install && npx vercel
-   ```
-5. 在 Vercel 控制台绑定自定义域名
+
+#### 1. 部署 Cloudflare Worker
+**方式一：Cloudflare 控制台自动构建（推荐）**
+1. 在 Cloudflare 控制台创建 Worker，连接到你的 GitHub 仓库
+2. 构建配置设置：
+   - 根目录：`/cloudflare-worker`
+   - 构建命令：`npm install`
+   - 部署命令：`npx wrangler deploy`
+3. 保存配置，触发自动部署
+4. 部署完成后记录 Worker 访问地址
+
+**方式二：本地命令行部署**
+```bash
+cd cloudflare-worker && npm install && npm run deploy
+```
+
+#### 2. 部署 Vercel 项目
+1. 在 Vercel 导入你的 GitHub 仓库
+2. 项目配置设置：
+   - Framework Preset：选择 `Next.js`
+   - Build Command：`npm run build`
+   - Root Directory：`vercel`
+3. 配置上述 Vercel 环境变量
+4. 点击 Deploy 部署
+5. 部署完成后绑定自定义域名
 6. 配置域名 DNS CNAME 指向 Vercel 分配的地址
 
 ## 🏗️ 架构设计
