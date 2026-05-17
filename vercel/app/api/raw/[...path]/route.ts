@@ -1,49 +1,54 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { handleRequest } from "../../github/[...path]/route";
 
-const CLOUDFLARE_WORKER_URL = process.env.CLOUDFLARE_WORKER_URL;
+export const runtime = "edge";
 
-export const runtime = 'edge';
-
+// 支持所有HTTP方法
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: { path: string[] } },
 ) {
-  const { path } = params;
-  const pathStr = path.join('/');
-  
-  if (!CLOUDFLARE_WORKER_URL) {
-    return NextResponse.json(
-      { error: 'Cloudflare Worker URL not configured' },
-      { status: 500 }
-    );
-  }
+  return handleRequest(request, { params }, "raw");
+}
 
-  const targetUrl = `https://raw.githubusercontent.com/${pathStr}`;
-  const forwardUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(targetUrl)}`;
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
+}
 
-  try {
-    const response = await fetch(forwardUrl, {
-      headers: {
-        'User-Agent': request.headers.get('User-Agent') || 'GitHub-Proxy/1.0',
-        'Accept': request.headers.get('Accept') || '*/*',
-      },
-    });
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
+}
 
-    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
-    const body = await response.arrayBuffer();
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
+}
 
-    return new NextResponse(body, {
-      status: response.status,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=604800',  // 7 days for raw files
-        'X-Proxy': 'Vercel-Edge',
-      },
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch from GitHub' },
-      { status: 502 }
-    );
-  }
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
+}
+
+export async function HEAD(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
+}
+
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+) {
+  return handleRequest(request, { params }, "raw");
 }
