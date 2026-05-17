@@ -106,8 +106,8 @@ export async function handleRequest(
       modified = modified.replace(/https:\/\/raw\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/raw/`);
       // 替换gist.githubusercontent.com链接
       modified = modified.replace(/https:\/\/gist\.githubusercontent\.com\//g, `https://${PROXY_DOMAIN}/api/gist/`);
-      // 替换github.githubassets.com静态资源链接，直接走Worker代理
-      modified = modified.replace(/https:\/\/github\.githubassets\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://github.githubassets.com/`);
+      // 替换github.githubassets.com静态资源链接，统一走代理域名/assets/路径
+      modified = modified.replace(/https:\/\/github\.githubassets\.com\//g, `https://${PROXY_DOMAIN}/assets/`);
       // 替换api.github.com接口链接，直接走Worker代理
       modified = modified.replace(/https:\/\/api\.github\.com\//g, `${CLOUDFLARE_WORKER_URL}?url=https://api.github.com/`);
 
