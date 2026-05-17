@@ -60,13 +60,17 @@ export default {
         headers['Authorization'] = `token ${env.GITHUB_TOKEN}`;
       }
 
-      // 转发请求到GitHub
-      const githubResponse = await fetch(targetUrl, {
+      // 转发请求到GitHub，GET/HEAD请求不能带body
+      const fetchOptions: RequestInit = {
         headers: headers,
         method: request.method,
-        body: request.body,
         redirect: 'follow',
-      });
+      };
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        fetchOptions.body = request.body;
+      }
+
+      const githubResponse = await fetch(targetUrl, fetchOptions);
 
       const contentType = githubResponse.headers.get('Content-Type') || 'application/octet-stream';
 
