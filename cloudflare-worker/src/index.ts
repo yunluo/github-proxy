@@ -21,7 +21,10 @@ export default {
 
       // 缓存key包含Accept头，避免返回错误的内容类型
       const acceptHeader = request.headers.get('Accept') || '';
-      const cacheKey = new Request(`github-proxy:${targetUrl}:${acceptHeader}`, { method: 'GET' });
+      // 构造合法URL作为缓存Key
+      const cacheUrl = new URL(targetUrl);
+      cacheUrl.searchParams.set('accept', acceptHeader);
+      const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
       const cache = caches.default;
 
       let response = await cache.match(cacheKey);
