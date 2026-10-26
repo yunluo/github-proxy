@@ -1,4 +1,4 @@
-name = "github-proxy-worker"
+name = "github-proxy"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true

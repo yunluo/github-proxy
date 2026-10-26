@@ -65,7 +65,7 @@ Never commit `.env`, `.dev.vars`, or tokens. `.gitignore` covers them.
 
 ## Notes
 
-- `wrangler.toml` deploys the Worker as `github-proxy-worker`.
+- `wrangler.toml` deploys the Worker as `github-proxy` (existing production Worker at `github-proxy.yunluo.workers.dev`).
 - HTML rewriting only runs for `github.com` HTML; raw HTML files and API JSON are not rewritten.
 - GitHub login/private-repo flows are unsupported (cookies stripped).
 - The Worker is an open proxy; add Cloudflare WAF/rate limiting for public deployments.

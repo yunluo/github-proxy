@@ -71,7 +71,7 @@ npm run deploy
 部署完成后地址形如：
 
 ```
-https://github-proxy-worker.<你的子域>.workers.dev
+https://github-proxy.<你的子域>.workers.dev
 ```
 
 `wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
@@ -90,7 +90,7 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 ### 5. 可选：自定义域名
 
-在 Cloudflare Dashboard → Workers & Pages → `github-proxy-worker` → Settings → Domains & Routes 中添加 Custom Domain。无需改代码，HTML 重写会自动使用访问域名。
+在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 中添加 Custom Domain。无需改代码，HTML 重写会自动使用访问域名。
 
 ## 使用
 

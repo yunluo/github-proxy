@@ -1,5 +1,5 @@
 {
-  "name": "github-proxy-worker",
+  "name": "github-proxy",
   "version": "1.0.0",
   "private": true,
   "type": "module",

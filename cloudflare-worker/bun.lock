@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "github-proxy-worker",
+      "name": "github-proxy",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20240117.0",
         "typescript": "^5.0.0",
