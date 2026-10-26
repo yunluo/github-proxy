@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.wrangler/
+dist/
+.env
+.env.*
+!.env.example
+.dev.vars
+*.log
+.DS_Store
+.openclaude/

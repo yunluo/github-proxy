@@ -2,12 +2,19 @@
   "name": "github-proxy-worker",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0",
-    "typescript": "^5.0.0"
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.0.0"
   }
 }

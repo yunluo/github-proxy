@@ -1,6 +1,7 @@
-name = "github-proxy"
+name = "github-proxy-worker"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-10-01"
+workers_dev = true
 
 [observability]
-enabled = false
+enabled = true
