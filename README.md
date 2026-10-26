@@ -68,10 +68,16 @@ Token 需要 **Workers Scripts:Edit** 权限（Cloudflare 的 “Edit Cloudflare
 npm run deploy
 ```
 
-部署完成后地址形如：
+部署完成后默认地址形如：
 
 ```
 https://github-proxy.<你的子域>.workers.dev
+```
+
+生产环境已绑定自定义域名：
+
+```
+https://gh.gitcafe.ink
 ```
 
 `wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
@@ -88,23 +94,25 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 > **安全要求**：`GITHUB_TOKEN` 必须是只读、仅授予公共仓库权限的 token。不要使用拥有私有仓库权限的 token——否则任何能访问代理的人都可以读取该 token 能看到的私有内容。
 
-### 5. 可选：自定义域名
+### 5. 自定义域名
 
-在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 中添加 Custom Domain。无需改代码，HTML 重写会自动使用访问域名。
+生产域名 `gh.gitcafe.ink` 已绑定到 Worker `github-proxy`，无需再配置。重建环境时，在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 添加 Custom Domain 即可；`gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。
+
+无需改代码：HTML 重写和重定向都使用请求的 `Origin`，通过自定义域名访问时链接会自动指向 `https://gh.gitcafe.ink/...`。
 
 ## 使用
 
 ```text
-https://<worker>/vercel/next.js                       # 仓库页面
-https://<worker>/search?q=cloudflare                  # 搜索
-https://<worker>/raw/vercel/next.js/main/package.json # 原始文件
-https://<worker>/api/github/repos/vercel/next.js      # GitHub API
+https://gh.gitcafe.ink/vercel/next.js                       # 仓库页面
+https://gh.gitcafe.ink/search?q=cloudflare                  # 搜索
+https://gh.gitcafe.ink/raw/vercel/next.js/main/package.json # 原始文件
+https://gh.gitcafe.ink/api/github/repos/vercel/next.js      # GitHub API
 ```
 
 Git 公开仓库加速：
 
 ```bash
-git config --global url."https://<worker>/".insteadOf "https://github.com/"
+git config --global url."https://gh.gitcafe.ink/".insteadOf "https://github.com/"
 ```
 
 ## 本地开发
