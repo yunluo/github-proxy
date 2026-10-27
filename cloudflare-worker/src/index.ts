@@ -109,7 +109,7 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -367,6 +367,11 @@ async function fetchUpstream(
     "If-Modified-Since",
     "X-GitHub-Api-Version",
     "Git-Protocol",
+    // GitHub's <include-fragment> and Turbo frames return a full HTML page
+    // unless these headers are forwarded, which makes the profile page embed
+    // itself recursively.
+    "X-Requested-With",
+    "Turbo-Frame",
   ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
@@ -468,6 +473,11 @@ function makeCacheKey(target: URL, requestUrl: URL, request: Request): Request {
 
   const apiVersion = request.headers.get("X-GitHub-Api-Version");
   if (apiVersion) keyUrl.searchParams.set("api", apiVersion);
+
+  // The same URL returns a fragment for include-fragment requests and a full
+  // page for direct navigation, so they must not share a cache entry.
+  const requestedWith = request.headers.get("X-Requested-With");
+  if (requestedWith) keyUrl.searchParams.set("xhr", requestedWith);
 
   return new Request(keyUrl.toString(), { method: "GET" });
 }
