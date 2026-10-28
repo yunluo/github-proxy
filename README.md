@@ -84,13 +84,15 @@ https://api.gh.gitcafe.ink    # GitHub API，路径与 api.github.com 一致
 
 两个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
 
-### 4. 可选：GitHub Token
+### 4. 可选但强烈建议：GitHub Token
 
-匿名访问 GitHub API 的限额较低。建议配置一个只读 PAT：
+匿名访问 GitHub API 的限额只有 **60 次/小时**，而且代理的所有访客共享 Worker 的出口 IP，很容易触发 `403 API rate limit exceeded`。配置一个只读 PAT 后限额提升到 5,000 次/小时：
 
 ```bash
 npx wrangler secret put GITHUB_TOKEN
 ```
+
+也可以在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Variables and Secrets 中添加名为 `GITHUB_TOKEN` 的 Secret。
 
 Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下载地址不会收到它。用户自己传入的 `Authorization` 会转发给 GitHub API/网页/raw，并绕过缓存。
 
@@ -172,6 +174,7 @@ npm run typecheck
 ## 限制与注意事项
 
 - 仅面向 GitHub 公共资源。登录、私有仓库网页、提交代码等需要 Cookie 的操作不支持。
+- `api.gh.gitcafe.ink` 是公开的 GitHub API 代理，所有访客共享 Worker 出口 IP 的限额；未配置 `GITHUB_TOKEN` 时每小时只有 60 次匿名请求，生产环境务必配置只读 PAT。
 - 请求头中的 `Cookie` 不会转发；GitHub 返回的 `Set-Cookie` 会被移除。
 - 为了代理页面可用，Worker 会移除 GitHub 的 CSP、`X-Frame-Options` 和跨域隔离头。这是代理镜像的取舍，请勿在代理页面上处理敏感操作。
 - Cloudflare Workers 免费版：10 万请求/天、单次 CPU 10ms。HTML 重写是流式的，但超大页面可能接近 CPU 上限；流量大时建议升级 Paid 计划。

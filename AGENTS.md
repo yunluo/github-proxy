@@ -50,7 +50,7 @@ No lint, test, or CI scripts exist. Verify manually with `curl` against `npm run
 |----------|-------|----------|-------|
 | `CLOUDFLARE_API_TOKEN` | deploy shell / `.env` | For non-interactive deploy | Workers Scripts:Edit + Zone Workers Routes:Edit (custom domains) |
 | `CLOUDFLARE_ACCOUNT_ID` | deploy shell / `.env` | If multiple accounts | |
-| `GITHUB_TOKEN` | Worker secret | No | `wrangler secret put GITHUB_TOKEN`; higher API limits |
+| `GITHUB_TOKEN` | Worker secret | Strongly recommended | `wrangler secret put GITHUB_TOKEN`; anonymous API is 60 req/h per egress IP, token raises it to 5,000/h |
 
 Never commit `.env`, `.dev.vars`, or tokens. `.gitignore` covers them.
 
