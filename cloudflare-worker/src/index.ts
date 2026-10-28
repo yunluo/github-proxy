@@ -91,6 +91,14 @@ const HOST_TO_UPSTREAM: Record<string, Upstream> = {
 
 const ALLOWED_HOSTS = new Set(Object.keys(HOST_TO_UPSTREAM));
 
+/**
+ * Hosts that mirror api.github.com root-for-root. Clients can use the same
+ * paths as the official API, for example:
+ *   https://api.gh.gitcafe.ink/repos/vercel/next.js
+ * The main host keeps the path-based /api/github/... route for compatibility.
+ */
+const API_HOSTS = new Set(["api.gh.gitcafe.ink"]);
+
 /** Redirect targets used by release downloads and source archives. */
 const ASSET_REDIRECT_HOSTS = new Set([
   "objects.githubusercontent.com",
@@ -109,7 +117,7 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -178,8 +186,10 @@ export default {
 function resolveTarget(
   requestUrl: URL,
 ): { target: URL; upstream: Upstream } | { error: Response } {
-  // Legacy backend contract: /?url=https://github.com/...
-  if (requestUrl.pathname === "/" && requestUrl.searchParams.has("url")) {
+  const isApiHost = API_HOSTS.has(requestUrl.hostname);
+
+  // Legacy backend contract: /?url=https://github.com/... (main host only).
+  if (!isApiHost && requestUrl.pathname === "/" && requestUrl.searchParams.has("url")) {
     const rawTarget = requestUrl.searchParams.get("url") || "";
 
     let target: URL;
@@ -205,6 +215,14 @@ function resolveTarget(
     }
 
     return { target, upstream };
+  }
+
+  // api.gh.gitcafe.ink mirrors api.github.com one-to-one, so /repos/... must
+  // stay /repos/... instead of becoming /api/github/repos/...
+  if (isApiHost) {
+    const target = new URL(`https://api.github.com${requestUrl.pathname}`);
+    target.search = requestUrl.search;
+    return { target, upstream: "api" };
   }
 
   let upstream: Upstream = "github";
@@ -286,11 +304,16 @@ async function proxyRequest(
 
   const location = respHeaders.get("Location");
   if (location) {
-    respHeaders.set("Location", rewriteLocation(location, requestUrl.origin, target));
+    respHeaders.set("Location", rewriteLocation(location, requestUrl, target));
   }
 
   if (isApi) {
     applyHeaders(respHeaders, API_CORS_HEADERS);
+
+    // Pagination links point at api.github.com; keep them on the entry the
+    // caller used so following them stays proxied.
+    const link = respHeaders.get("Link");
+    if (link) respHeaders.set("Link", rewriteLinkHeader(link, requestUrl));
   }
 
   const status = upstreamResponse.status;
@@ -321,7 +344,7 @@ async function proxyRequest(
     respHeaders.delete("Content-Length");
     respHeaders.delete("Content-Encoding");
 
-    const transformed = buildHtmlRewriter(requestUrl.origin).transform(
+    const transformed = buildHtmlRewriter(requestUrl).transform(
       new Response(upstreamResponse.body, {
         status,
         statusText: upstreamResponse.statusText,
@@ -512,7 +535,7 @@ function isStaticContentType(contentType: string): boolean {
   );
 }
 
-function buildHtmlRewriter(base: string): HTMLRewriter {
+function buildHtmlRewriter(requestUrl: URL): HTMLRewriter {
   const rewriter = new HTMLRewriter();
 
   for (const attribute of [
@@ -529,7 +552,7 @@ function buildHtmlRewriter(base: string): HTMLRewriter {
       element(element) {
         const value = element.getAttribute(attribute);
         if (!value) return;
-        const rewritten = rewriteAbsoluteUrl(value, base);
+        const rewritten = rewriteAbsoluteUrl(value, requestUrl);
         if (rewritten) element.setAttribute(attribute, rewritten);
       },
     });
@@ -545,7 +568,7 @@ function buildHtmlRewriter(base: string): HTMLRewriter {
         .map((candidate) => {
           const parts = candidate.trim().split(/\s+/);
           const [url, ...descriptor] = parts;
-          const mapped = rewriteAbsoluteUrl(url, base);
+          const mapped = rewriteAbsoluteUrl(url, requestUrl);
           return [mapped || url, ...descriptor].join(" ");
         })
         .join(", ");
@@ -558,7 +581,7 @@ function buildHtmlRewriter(base: string): HTMLRewriter {
     element(element) {
       const value = element.getAttribute("content");
       if (!value || /\s/.test(value)) return;
-      const rewritten = rewriteAbsoluteUrl(value, base);
+      const rewritten = rewriteAbsoluteUrl(value, requestUrl);
       if (rewritten) element.setAttribute("content", rewritten);
     },
   });
@@ -566,7 +589,7 @@ function buildHtmlRewriter(base: string): HTMLRewriter {
   return rewriter;
 }
 
-function rewriteAbsoluteUrl(value: string, base: string): string | null {
+function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
   const match = /^(https?:)?\/\/([^/?#]+)(.*)$/i.exec(value);
   if (!match) return null;
 
@@ -578,16 +601,32 @@ function rewriteAbsoluteUrl(value: string, base: string): string | null {
   if (!upstream) return null;
 
   const rest = match[3].replace(/^\/+/, "");
-  return `${base}${UPSTREAMS[upstream].route}${rest}`;
+
+  // The API host serves api.github.com at its root, so its paths must not get
+  // the /api/github/ prefix. Links to other GitHub hosts are left absolute
+  // there instead of being mapped onto the API host.
+  if (API_HOSTS.has(requestUrl.hostname)) {
+    return upstream === "api" ? `${requestUrl.origin}/${rest}` : null;
+  }
+
+  return `${requestUrl.origin}${UPSTREAMS[upstream].route}${rest}`;
 }
 
-function rewriteLocation(location: string, base: string, target: URL): string {
+function rewriteLocation(location: string, requestUrl: URL, target: URL): string {
   try {
     const absolute = new URL(location, target).toString();
-    return rewriteAbsoluteUrl(absolute, base) || absolute;
+    return rewriteAbsoluteUrl(absolute, requestUrl) || absolute;
   } catch {
     return location;
   }
+}
+
+/** Keep RFC 8288 pagination links on the same proxy entry point. */
+function rewriteLinkHeader(value: string, requestUrl: URL): string {
+  return value.replace(/<([^>]+)>/g, (match, url: string) => {
+    const rewritten = rewriteAbsoluteUrl(url, requestUrl);
+    return rewritten ? `<${rewritten}>` : match;
+  });
 }
 
 function applyHeaders(headers: Headers, values: Record<string, string>): void {

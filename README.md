@@ -14,7 +14,7 @@
 - Raw 文件、Gist 原始内容
 - GitHub 静态资源（JS/CSS/字体/图片）
 - 头像、README 图片（avatars / camo / user-images）
-- GitHub REST API（含 CORS 预检）
+- GitHub REST API（`/api/github/...`，以及路径与官方一致的独立子域 `api.gh.gitcafe.ink`）
 - Release 下载、源码 zip/tar 包（自动跟随 GitHub 的签名 CDN 重定向）
 - 多级缓存：HTML 5 分钟、API 1 分钟、Raw 7 天、静态资源 30 天
 - SSRF 防护：目标域名白名单 + 仅允许 HTTPS + 禁止非标准端口
@@ -34,6 +34,7 @@
 | `/private-user-images/...` | `private-user-images.githubusercontent.com` |
 | `/media/...` | `media.githubusercontent.com` |
 | `/api/github/...` | `api.github.com` |
+| `api.gh.gitcafe.ink/...`（独立域名） | `api.github.com`，路径完全一致 |
 | `/api/raw/...`、`/api/gist/...`、`/api/assets/...` | 兼容旧版路径 |
 | `/?url=https%3A%2F%2Fgithub.com%2F...` | 兼容旧的 Worker 后端调用方式 |
 | `/__health` | 健康检查（JSON） |
@@ -74,13 +75,14 @@ npm run deploy
 https://github-proxy.<你的子域>.workers.dev
 ```
 
-生产环境已绑定自定义域名：
+生产环境已绑定两个自定义域名：
 
-```
-https://gh.gitcafe.ink
+```text
+https://gh.gitcafe.ink        # 网页、Raw、静态资源
+https://api.gh.gitcafe.ink    # GitHub API，路径与 api.github.com 一致
 ```
 
-`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
+两个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
 
 ### 4. 可选：GitHub Token
 
@@ -96,9 +98,18 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 ### 5. 自定义域名
 
-生产域名 `gh.gitcafe.ink` 已绑定到 Worker `github-proxy`，无需再配置。重建环境时，在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 添加 Custom Domain 即可；`gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。
+生产环境绑定两个 Custom Domain：
 
-无需改代码：HTML 重写和重定向都使用请求的 `Origin`，通过自定义域名访问时链接会自动指向 `https://gh.gitcafe.ink/...`。
+| 域名 | 用途 |
+|---|---|
+| `gh.gitcafe.ink` | 网页、Raw、静态资源 |
+| `api.gh.gitcafe.ink` | GitHub API，路径与 `api.github.com` 完全一致 |
+
+两个域名都写在 `wrangler.toml` 的 `routes` 中，`wrangler deploy` 会自动创建或保持绑定。**必须两个一起列出**：Wrangler 会用配置文件里的路由覆盖 Dashboard 上配置的路由，漏写 `gh.gitcafe.ink` 会导致它被解绑。
+
+`gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。如果部署 token 没有 Zone → Workers Routes 写权限，添加域名会失败；此时改在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 手动添加。
+
+网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；API 子域在代码中通过 `API_HOSTS` 识别，更换子域时需同步修改。
 
 ## 使用
 
@@ -106,7 +117,14 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 https://gh.gitcafe.ink/vercel/next.js                       # 仓库页面
 https://gh.gitcafe.ink/search?q=cloudflare                  # 搜索
 https://gh.gitcafe.ink/raw/vercel/next.js/main/package.json # 原始文件
-https://gh.gitcafe.ink/api/github/repos/vercel/next.js      # GitHub API
+https://gh.gitcafe.ink/api/github/repos/vercel/next.js      # GitHub API（兼容路径）
+https://api.gh.gitcafe.ink/repos/vercel/next.js             # GitHub API（与官方路径一致）
+```
+
+`api.gh.gitcafe.ink` 上的响应会保留 GitHub 的 `Link` 分页头，但其中的 URL 会重写为代理地址，因此按 `Link` 翻页仍然走代理：
+
+```bash
+curl -i "https://api.gh.gitcafe.ink/repos/vercel/next.js/issues?per_page=2"
 ```
 
 Git 公开仓库加速：
@@ -149,7 +167,7 @@ npm run typecheck
 | 带 `Authorization` 的请求 | 不缓存，`private, no-store` |
 | 带 `Range` 的请求 | 不缓存 |
 
-缓存 Key 包含目标 URL、访问域名、`Accept`、`Accept-Language` 和 API 版本，避免不同内容类型互相污染。
+缓存 Key 包含目标 URL、访问域名、`Accept`、`Accept-Language` 和 API 版本，避免不同内容类型互相污染。`api.gh.gitcafe.ink` 与 `gh.gitcafe.ink/api/github/...` 分别缓存。
 
 ## 限制与注意事项
 

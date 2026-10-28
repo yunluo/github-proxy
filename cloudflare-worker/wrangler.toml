@@ -3,5 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
 
+# Custom domains are listed together because Wrangler replaces dashboard
+# routes with the ones defined here. Omitting gh.gitcafe.ink would detach it.
+routes = [
+  { pattern = "gh.gitcafe.ink", custom_domain = true },
+  { pattern = "api.gh.gitcafe.ink", custom_domain = true },
+]
+
 [observability]
 enabled = true
