@@ -13,6 +13,11 @@
  *   /media/...                   -> media.githubusercontent.com
  *   /api/github/...              -> api.github.com
  *
+ * Dedicated mirror hosts serve their upstream root-for-root, so paths match
+ * the official host exactly:
+ *   api.gh.gitcafe.ink/...       -> api.github.com
+ *   ghassets.gitcafe.ink/...     -> github.githubassets.com
+ *
  * The legacy worker contract is still accepted:
  *   /?url=https%3A%2F%2Fgithub.com%2Fowner%2Frepo
  *
@@ -92,12 +97,17 @@ const HOST_TO_UPSTREAM: Record<string, Upstream> = {
 const ALLOWED_HOSTS = new Set(Object.keys(HOST_TO_UPSTREAM));
 
 /**
- * Hosts that mirror api.github.com root-for-root. Clients can use the same
- * paths as the official API, for example:
+ * Dedicated mirror hosts serve their upstream root-for-root, so paths are
+ * identical to the official host. For example:
  *   https://api.gh.gitcafe.ink/repos/vercel/next.js
- * The main host keeps the path-based /api/github/... route for compatibility.
+ *   https://ghassets.gitcafe.ink/assets/chunk-app.js
+ * The main host keeps the path-based routes (/api/github/..., /assets/...)
+ * for compatibility.
  */
-const API_HOSTS = new Set(["api.gh.gitcafe.ink"]);
+const DEDICATED_HOSTS: Record<string, Upstream> = {
+  "api.gh.gitcafe.ink": "api",
+  "ghassets.gitcafe.ink": "assets",
+};
 
 /** Redirect targets used by release downloads and source archives. */
 const ASSET_REDIRECT_HOSTS = new Set([
@@ -186,10 +196,10 @@ export default {
 function resolveTarget(
   requestUrl: URL,
 ): { target: URL; upstream: Upstream } | { error: Response } {
-  const isApiHost = API_HOSTS.has(requestUrl.hostname);
+  const dedicatedUpstream = DEDICATED_HOSTS[requestUrl.hostname];
 
   // Legacy backend contract: /?url=https://github.com/... (main host only).
-  if (!isApiHost && requestUrl.pathname === "/" && requestUrl.searchParams.has("url")) {
+  if (!dedicatedUpstream && requestUrl.pathname === "/" && requestUrl.searchParams.has("url")) {
     const rawTarget = requestUrl.searchParams.get("url") || "";
 
     let target: URL;
@@ -217,12 +227,12 @@ function resolveTarget(
     return { target, upstream };
   }
 
-  // api.gh.gitcafe.ink mirrors api.github.com one-to-one, so /repos/... must
-  // stay /repos/... instead of becoming /api/github/repos/...
-  if (isApiHost) {
-    const target = new URL(`https://api.github.com${requestUrl.pathname}`);
+  // Dedicated mirror hosts map root-for-root, so /repos/... and /assets/...
+  // stay unchanged instead of getting the /api/github/ or /assets/ prefix.
+  if (dedicatedUpstream) {
+    const target = new URL(`${UPSTREAMS[dedicatedUpstream].origin}${requestUrl.pathname}`);
     target.search = requestUrl.search;
-    return { target, upstream: "api" };
+    return { target, upstream: dedicatedUpstream };
   }
 
   let upstream: Upstream = "github";
@@ -602,11 +612,12 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
 
   const rest = match[3].replace(/^\/+/, "");
 
-  // The API host serves api.github.com at its root, so its paths must not get
-  // the /api/github/ prefix. Links to other GitHub hosts are left absolute
-  // there instead of being mapped onto the API host.
-  if (API_HOSTS.has(requestUrl.hostname)) {
-    return upstream === "api" ? `${requestUrl.origin}/${rest}` : null;
+  // Dedicated mirror hosts serve their upstream at the root, so links to that
+  // same upstream map back onto the mirror host. Links to other GitHub hosts
+  // are left absolute instead of being mapped onto the mirror host.
+  const dedicatedUpstream = DEDICATED_HOSTS[requestUrl.hostname];
+  if (dedicatedUpstream) {
+    return upstream === dedicatedUpstream ? `${requestUrl.origin}/${rest}` : null;
   }
 
   return `${requestUrl.origin}${UPSTREAMS[upstream].route}${rest}`;

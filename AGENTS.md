@@ -34,7 +34,7 @@ No lint, test, or CI scripts exist. Verify manually with `curl` against `npm run
 
 - One Worker handles every request.
 - Path prefixes select the upstream: `/` → github.com, `/raw/` → raw.githubusercontent.com, `/gist/` → gist.githubusercontent.com, `/assets/` → github.githubassets.com, `/avatars/`, `/camo/`, `/user-images/`, `/private-user-images/`, `/media/`, `/api/github/` → api.github.com.
-- `api.gh.gitcafe.ink` maps root-for-root to api.github.com (`API_HOSTS` in `src/index.ts`), so official API paths work unchanged.
+- Dedicated mirror hosts map root-for-root (`DEDICATED_HOSTS` in `src/index.ts`): `api.gh.gitcafe.ink` → api.github.com and `ghassets.gitcafe.ink` → github.githubassets.com, so official paths work unchanged.
 - `/?url=` preserves the old backend contract (main host only).
 - HTML is rewritten with `HTMLRewriter` (`href`, `src`, `srcset`, `data-*`, `action`, `poster`, meta `content`); redirect `Location` values are rewritten to the request origin.
 - Release downloads and archive links that redirect to `objects.githubusercontent.com`, `release-assets.githubusercontent.com`, `github-cloud.s3.amazonaws.com`, or `codeload.github.com` are followed inside the Worker.
@@ -63,12 +63,13 @@ Never commit `.env`, `.dev.vars`, or tokens. `.gitignore` covers them.
 - `/avatars/`, `/camo/`, `/user-images/`, `/private-user-images/`, `/media/` — GitHub image/file CDNs
 - `/api/github/...` — api.github.com
 - `https://api.gh.gitcafe.ink/...` — api.github.com, paths identical to the official API
+- `https://ghassets.gitcafe.ink/...` — github.githubassets.com, paths identical to the official host
 - `/api/raw/...`, `/api/gist/...`, `/api/assets/...` — legacy aliases
 - `/__health` — JSON health check
 
 ## Notes
 
-- `wrangler.toml` deploys the Worker as `github-proxy` (existing production Worker at `github-proxy.yunluo.workers.dev`). Both custom domains, `gh.gitcafe.ink` and `api.gh.gitcafe.ink`, are declared in `routes`; Wrangler replaces dashboard routes with them, so keep both listed.
+- `wrangler.toml` deploys the Worker as `github-proxy` (existing production Worker at `github-proxy.yunluo.workers.dev`). All three custom domains — `gh.gitcafe.ink`, `api.gh.gitcafe.ink`, `ghassets.gitcafe.ink` — are declared in `routes`; Wrangler replaces dashboard routes with them, so keep all of them listed.
 - HTML rewriting only runs for `github.com` HTML; raw HTML files and API JSON are not rewritten.
 - GitHub login/private-repo flows are unsupported (cookies stripped).
 - The Worker is an open proxy; add Cloudflare WAF/rate limiting for public deployments.

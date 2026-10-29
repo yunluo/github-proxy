@@ -21,7 +21,7 @@ GitHub
 
 1. `GET /{owner}/{repo}` maps to `https://github.com/{owner}/{repo}`.
 2. `/raw/...`, `/gist/...`, `/assets/...`, `/avatars/...`, `/camo/...`, `/user-images/...`, `/media/...`, and `/api/github/...` map to their GitHub hosts.
-3. `api.gh.gitcafe.ink/...` maps root-for-root to `https://api.github.com/...`, so `/repos/vercel/next.js` keeps its official API path.
+3. Dedicated mirror hosts map root-for-root: `api.gh.gitcafe.ink/...` to `https://api.github.com/...` and `ghassets.gitcafe.ink/...` to `https://github.githubassets.com/...`, so official paths stay unchanged.
 4. `/?url=...` is accepted for backwards compatibility with the legacy backend contract on the main host.
 5. Requests with `Authorization` or `Range` bypass the Worker cache and are marked `private, no-store` / returned as-is.
 6. Successful `200` responses are stored in the Cache API; the key includes the target URL, request host, `Accept`, `Accept-Language`, and `X-GitHub-Api-Version`.
@@ -41,9 +41,10 @@ GitHub
 
 Single Worker, configured by `cloudflare-worker/wrangler.toml`. No Vercel, database, KV, or Durable Objects are required.
 
-Two custom domains are declared in `routes` and created by `wrangler deploy`:
+Three custom domains are declared in `routes` and created by `wrangler deploy`:
 
 - `gh.gitcafe.ink` — web pages, raw files, assets
 - `api.gh.gitcafe.ink` — GitHub API with official paths
+- `ghassets.gitcafe.ink` — static assets with official paths
 
-Keep both entries: Wrangler replaces dashboard-managed routes with the configuration, so a missing entry detaches that domain. Deploying route changes requires Zone → Workers Routes write permission in addition to Workers Scripts edit.
+Keep all three entries: Wrangler replaces dashboard-managed routes with the configuration, so a missing entry detaches that domain. Deploying route changes requires Zone → Workers Routes write permission in addition to Workers Scripts edit.

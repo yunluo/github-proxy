@@ -12,7 +12,7 @@
 
 - GitHub 网页访问：仓库、搜索、Issue、Release 页面
 - Raw 文件、Gist 原始内容
-- GitHub 静态资源（JS/CSS/字体/图片）
+- GitHub 静态资源（JS/CSS/字体/图片，另有路径与官方一致的独立子域 `ghassets.gitcafe.ink`）
 - 头像、README 图片（avatars / camo / user-images）
 - GitHub REST API（`/api/github/...`，以及路径与官方一致的独立子域 `api.gh.gitcafe.ink`）
 - Release 下载、源码 zip/tar 包（自动跟随 GitHub 的签名 CDN 重定向）
@@ -28,6 +28,7 @@
 | `/raw/{owner}/{repo}/...` | `raw.githubusercontent.com` |
 | `/gist/...` | `gist.githubusercontent.com` |
 | `/assets/...` | `github.githubassets.com` |
+| `ghassets.gitcafe.ink/...`（独立域名） | `github.githubassets.com`，路径完全一致 |
 | `/avatars/...` | `avatars.githubusercontent.com` |
 | `/camo/...` | `camo.githubusercontent.com` |
 | `/user-images/...` | `user-images.githubusercontent.com` |
@@ -75,14 +76,15 @@ npm run deploy
 https://github-proxy.<你的子域>.workers.dev
 ```
 
-生产环境已绑定两个自定义域名：
+生产环境已绑定三个自定义域名：
 
 ```text
-https://gh.gitcafe.ink        # 网页、Raw、静态资源
-https://api.gh.gitcafe.ink    # GitHub API，路径与 api.github.com 一致
+https://gh.gitcafe.ink          # 网页、Raw、静态资源
+https://api.gh.gitcafe.ink      # GitHub API，路径与 api.github.com 一致
+https://ghassets.gitcafe.ink    # 静态资源，路径与 github.githubassets.com 一致
 ```
 
-两个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
+三个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
 
 ### 4. 可选但强烈建议：GitHub Token
 
@@ -100,18 +102,19 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 ### 5. 自定义域名
 
-生产环境绑定两个 Custom Domain：
+生产环境绑定三个 Custom Domain：
 
 | 域名 | 用途 |
 |---|---|
 | `gh.gitcafe.ink` | 网页、Raw、静态资源 |
 | `api.gh.gitcafe.ink` | GitHub API，路径与 `api.github.com` 完全一致 |
+| `ghassets.gitcafe.ink` | 静态资源，路径与 `github.githubassets.com` 完全一致 |
 
-两个域名都写在 `wrangler.toml` 的 `routes` 中，`wrangler deploy` 会自动创建或保持绑定。**必须两个一起列出**：Wrangler 会用配置文件里的路由覆盖 Dashboard 上配置的路由，漏写 `gh.gitcafe.ink` 会导致它被解绑。
+所有域名都写在 `wrangler.toml` 的 `routes` 中，`wrangler deploy` 会自动创建或保持绑定。**必须全部一起列出**：Wrangler 会用配置文件里的路由覆盖 Dashboard 上配置的路由，漏写任何一个都会导致它被解绑。
 
 `gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。如果部署 token 没有 Zone → Workers Routes 写权限，添加域名会失败；此时改在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 手动添加。
 
-网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；API 子域在代码中通过 `API_HOSTS` 识别，更换子域时需同步修改。
+网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；独立镜像子域（`api.gh.gitcafe.ink`、`ghassets.gitcafe.ink`）在代码中通过 `DEDICATED_HOSTS` 识别，更换子域时需同步修改。
 
 ## 使用
 
@@ -121,7 +124,10 @@ https://gh.gitcafe.ink/search?q=cloudflare                  # 搜索
 https://gh.gitcafe.ink/raw/vercel/next.js/main/package.json # 原始文件
 https://gh.gitcafe.ink/api/github/repos/vercel/next.js      # GitHub API（兼容路径）
 https://api.gh.gitcafe.ink/repos/vercel/next.js             # GitHub API（与官方路径一致）
+https://ghassets.gitcafe.ink/assets/...                     # 静态资源（与官方路径一致）
 ```
+
+`ghassets.gitcafe.ink` 与 `github.githubassets.com` 的路径完全一致，把页面里的静态资源地址从 `https://github.githubassets.com/...` 换成 `https://ghassets.gitcafe.ink/...` 即可走代理；主域名上的 `/assets/...` 兼容路径保持不变。
 
 `api.gh.gitcafe.ink` 上的响应会保留 GitHub 的 `Link` 分页头，但其中的 URL 会重写为代理地址，因此按 `Link` 翻页仍然走代理：
 
