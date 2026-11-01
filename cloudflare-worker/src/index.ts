@@ -127,10 +127,17 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-const CACHE_VERSION = "v3";
+// v4: HTML rewriting now covers import maps / embedded JSON payloads.
+const CACHE_VERSION = "v4";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
+
+/** Inline scripts whose JSON payload may contain absolute GitHub URLs. */
+const SCRIPT_PAYLOAD_SELECTORS = [
+  'script[type="importmap"]',
+  'script[type="application/json"]',
+];
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -552,6 +559,7 @@ function buildHtmlRewriter(requestUrl: URL): HTMLRewriter {
     "href",
     "src",
     "data-href",
+    "data-base-href",
     "data-src",
     "data-url",
     "action",
@@ -596,6 +604,28 @@ function buildHtmlRewriter(requestUrl: URL): HTMLRewriter {
     },
   });
 
+  // GitHub also embeds GitHub-hosted URLs as JSON inside <script>: module
+  // import maps for its React apps and pre-rendered hydration payloads. Those
+  // URLs never appear in an attribute, so rewrite the script text itself —
+  // otherwise e.g. the search page loads its React modules straight from
+  // github.githubassets.com and never renders behind the proxy.
+  for (const selector of SCRIPT_PAYLOAD_SELECTORS) {
+    let buffered = "";
+    rewriter.on(selector, {
+      element() {
+        buffered = "";
+      },
+      text(chunk) {
+        buffered += chunk.text;
+        if (chunk.lastInTextNode && buffered !== "") {
+          chunk.replace(rewriteEmbeddedUrls(buffered, requestUrl), { html: true });
+        } else {
+          chunk.remove();
+        }
+      },
+    });
+  }
+
   return rewriter;
 }
 
@@ -621,6 +651,21 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
   }
 
   return `${requestUrl.origin}${UPSTREAMS[upstream].route}${rest}`;
+}
+
+/**
+ * Rewrite absolute GitHub URLs embedded in script payloads (import maps,
+ * hydration JSON). The prefix mapping mirrors rewriteAbsoluteUrl:
+ * https://<host>/<rest> -> <origin><route><rest>.
+ */
+function rewriteEmbeddedUrls(value: string, requestUrl: URL): string {
+  let out = value;
+  for (const [host, upstream] of Object.entries(HOST_TO_UPSTREAM)) {
+    out = out
+      .split(`https://${host}/`)
+      .join(`${requestUrl.origin}${UPSTREAMS[upstream].route}`);
+  }
+  return out;
 }
 
 function rewriteLocation(location: string, requestUrl: URL, target: URL): string {
