@@ -38,7 +38,8 @@ type Upstream =
   | "camo"
   | "userImages"
   | "privateUserImages"
-  | "media";
+  | "media"
+  | "collector";
 
 interface UpstreamConfig {
   origin: string;
@@ -61,6 +62,11 @@ const UPSTREAMS: Record<Upstream, UpstreamConfig> = {
     immutable: true,
   },
   api: { origin: "https://api.github.com", route: "/api/github/", cacheSeconds: 60 },
+  collector: {
+    origin: "https://collector.github.com",
+    route: "/collector/",
+    cacheSeconds: 60,
+  },
   avatars: {
     origin: "https://avatars.githubusercontent.com",
     route: "/avatars/",
@@ -92,6 +98,7 @@ const HOST_TO_UPSTREAM: Record<string, Upstream> = {
   "user-images.githubusercontent.com": "userImages",
   "private-user-images.githubusercontent.com": "privateUserImages",
   "media.githubusercontent.com": "media",
+  "collector.github.com": "collector",
 };
 
 const ALLOWED_HOSTS = new Set(Object.keys(HOST_TO_UPSTREAM));
@@ -107,14 +114,19 @@ const ALLOWED_HOSTS = new Set(Object.keys(HOST_TO_UPSTREAM));
 const DEDICATED_HOSTS: Record<string, Upstream> = {
   "api.gh.gitcafe.ink": "api",
   "ghassets.gitcafe.ink": "assets",
+  "ghcollector.gitcafe.ink": "collector",
 };
 
 /**
- * github.githubassets.com URLs in HTML attributes and script payloads are
- * rewritten onto this mirror host root-for-root (like the entry point above)
- * instead of the request origin's /assets/ path.
+ * Upstreams whose URLs in HTML attributes and script payloads are rewritten
+ * onto their dedicated mirror host root-for-root — the same hosts as the
+ * entry points in DEDICATED_HOSTS — instead of a path-based route on the
+ * request origin. Keep both tables in sync when adding a mirror host.
  */
-const ASSETS_MIRROR_HOST = "ghassets.gitcafe.ink";
+const MIRROR_HOST_BY_UPSTREAM: Partial<Record<Upstream, string>> = {
+  assets: "ghassets.gitcafe.ink",
+  collector: "ghcollector.gitcafe.ink",
+};
 
 /** Redirect targets used by release downloads and source archives. */
 const ASSET_REDIRECT_HOSTS = new Set([
@@ -134,8 +146,8 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-// v5: github.githubassets.com URLs in HTML/payloads map onto ghassets.gitcafe.ink.
-const CACHE_VERSION = "v5";
+// v6: new collector upstream; githubassets/collector URLs map onto mirror hosts.
+const CACHE_VERSION = "v6";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -180,8 +192,11 @@ export default {
 
     const { target, upstream } = resolved;
     const isApi = upstream === "api";
+    // The collector endpoint is POSTed cross-origin by GitHub's analytics
+    // JS, so it needs the same permissive CORS handling as the API.
+    const needsCors = isApi || upstream === "collector";
 
-    if (isApi && request.method === "OPTIONS") {
+    if (needsCors && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: API_CORS_HEADERS });
     }
 
@@ -200,7 +215,7 @@ export default {
           "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "no-store",
           "X-Proxy": "Cloudflare-Worker",
-          ...(isApi ? API_CORS_HEADERS : {}),
+          ...(needsCors ? API_CORS_HEADERS : {}),
         },
       });
     }
@@ -277,6 +292,7 @@ async function proxyRequest(
   ctx: ExecutionContext,
 ): Promise<Response> {
   const isApi = upstream === "api";
+  const needsCors = isApi || upstream === "collector";
   const hasUserAuth = request.headers.has("Authorization");
   const hasRange = request.headers.has("Range");
   const canUseCache = request.method === "GET" && !hasUserAuth && !hasRange;
@@ -290,7 +306,7 @@ async function proxyRequest(
       const headers = new Headers(cached.headers);
       headers.set("X-Cache", "HIT");
       headers.set("X-Proxy", "Cloudflare-Worker");
-      if (isApi) applyHeaders(headers, API_CORS_HEADERS);
+      if (needsCors) applyHeaders(headers, API_CORS_HEADERS);
       return new Response(cached.body, {
         status: cached.status,
         statusText: cached.statusText,
@@ -331,9 +347,11 @@ async function proxyRequest(
     respHeaders.set("Location", rewriteLocation(location, requestUrl, target));
   }
 
-  if (isApi) {
+  if (needsCors) {
     applyHeaders(respHeaders, API_CORS_HEADERS);
+  }
 
+  if (isApi) {
     // Pagination links point at api.github.com; keep them on the entry the
     // caller used so following them stays proxied.
     const link = respHeaders.get("Link");
@@ -657,11 +675,12 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
     return upstream === dedicatedUpstream ? `${requestUrl.origin}/${rest}` : null;
   }
 
-  // github.githubassets.com URLs always map onto the dedicated mirror host,
-  // so the official paths are preserved verbatim; other upstreams stay
-  // path-based on the request origin.
-  if (upstream === "assets") {
-    return `https://${ASSETS_MIRROR_HOST}/${rest}`;
+  // Mirror-host upstreams always map onto their dedicated host, so the
+  // official paths are preserved verbatim; other upstreams stay path-based
+  // on the request origin.
+  const mirrorHost = MIRROR_HOST_BY_UPSTREAM[upstream];
+  if (mirrorHost) {
+    return `https://${mirrorHost}/${rest}`;
   }
 
   return `${requestUrl.origin}${UPSTREAMS[upstream].route}${rest}`;
@@ -675,10 +694,10 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
 function rewriteEmbeddedUrls(value: string, requestUrl: URL): string {
   let out = value;
   for (const [host, upstream] of Object.entries(HOST_TO_UPSTREAM)) {
-    const prefix =
-      upstream === "assets"
-        ? `https://${ASSETS_MIRROR_HOST}/`
-        : `${requestUrl.origin}${UPSTREAMS[upstream].route}`;
+    const mirrorHost = MIRROR_HOST_BY_UPSTREAM[upstream];
+    const prefix = mirrorHost
+      ? `https://${mirrorHost}/`
+      : `${requestUrl.origin}${UPSTREAMS[upstream].route}`;
     out = out.split(`https://${host}/`).join(prefix);
   }
   return out;

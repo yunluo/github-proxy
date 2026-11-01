@@ -9,6 +9,7 @@ routes = [
   { pattern = "gh.gitcafe.ink", custom_domain = true },
   { pattern = "api.gh.gitcafe.ink", custom_domain = true },
   { pattern = "ghassets.gitcafe.ink", custom_domain = true },
+  { pattern = "ghcollector.gitcafe.ink", custom_domain = true },
 ]
 
 [observability]
