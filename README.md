@@ -114,7 +114,7 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 `gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。如果部署 token 没有 Zone → Workers Routes 写权限，添加域名会失败；此时改在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 手动添加。
 
-网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；独立镜像子域（`api.gh.gitcafe.ink`、`ghassets.gitcafe.ink`）在代码中通过 `DEDICATED_HOSTS` 识别，更换子域时需同步修改。
+网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；页面 HTML 与脚本 payload 里的 `github.githubassets.com` 资源地址（含 React import map）一律重写到专用域 `ghassets.gitcafe.ink`。独立镜像子域（`api.gh.gitcafe.ink`、`ghassets.gitcafe.ink`）在代码中通过 `DEDICATED_HOSTS` 识别，更换子域时需同步修改。
 
 ## 使用
 
@@ -127,7 +127,7 @@ https://api.gh.gitcafe.ink/repos/vercel/next.js             # GitHub API（与�
 https://ghassets.gitcafe.ink/assets/...                     # 静态资源（与官方路径一致）
 ```
 
-`ghassets.gitcafe.ink` 与 `github.githubassets.com` 的路径完全一致，把页面里的静态资源地址从 `https://github.githubassets.com/...` 换成 `https://ghassets.gitcafe.ink/...` 即可走代理；主域名上的 `/assets/...` 兼容路径保持不变。
+`ghassets.gitcafe.ink` 与 `github.githubassets.com` 的路径完全一致，把页面里的静态资源地址从 `https://github.githubassets.com/...` 换成 `https://ghassets.gitcafe.ink/...` 即可走代理；通过代理浏览页面时，HTML 与脚本 payload 里的资源地址也会自动重写到该域名，主域名上的 `/assets/...` 兼容路径保持不变。
 
 `api.gh.gitcafe.ink` 上的响应会保留 GitHub 的 `Link` 分页头，但其中的 URL 会重写为代理地址，因此按 `Link` 翻页仍然走代理：
 

@@ -34,7 +34,7 @@ No lint, test, or CI scripts exist. Verify manually with `curl` against `npm run
 
 - One Worker handles every request.
 - Path prefixes select the upstream: `/` → github.com, `/raw/` → raw.githubusercontent.com, `/gist/` → gist.githubusercontent.com, `/assets/` → github.githubassets.com, `/avatars/`, `/camo/`, `/user-images/`, `/private-user-images/`, `/media/`, `/api/github/` → api.github.com.
-- Dedicated mirror hosts map root-for-root (`DEDICATED_HOSTS` in `src/index.ts`): `api.gh.gitcafe.ink` → api.github.com and `ghassets.gitcafe.ink` → github.githubassets.com, so official paths work unchanged.
+- Dedicated mirror hosts map root-for-root (`DEDICATED_HOSTS` in `src/index.ts`): `api.gh.gitcafe.ink` → api.github.com and `ghassets.gitcafe.ink` → github.githubassets.com, so official paths work unchanged. `github.githubassets.com` URLs in HTML attributes and script payloads are rewritten onto `ghassets.gitcafe.ink` (root-for-root, `ASSETS_MIRROR_HOST`); other upstreams stay path-based on the request origin.
 - `/?url=` preserves the old backend contract (main host only).
 - HTML is rewritten with `HTMLRewriter` (`href`, `src`, `srcset`, `data-*`, `action`, `poster`, meta `content`); redirect `Location` values are rewritten to the request origin.
 - GitHub-hosted URLs inside `<script type="importmap">` and `<script type="application/json">` payloads (React import maps, hydration JSON) are rewritten textually via `SCRIPT_PAYLOAD_SELECTORS` / `rewriteEmbeddedUrls`; without this, GitHub's React apps (e.g. search) load their modules straight from `github.githubassets.com`. Analytics `data-hydro-*` payloads and the iTunes app-banner meta are intentionally left absolute.

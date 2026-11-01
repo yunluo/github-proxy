@@ -109,6 +109,13 @@ const DEDICATED_HOSTS: Record<string, Upstream> = {
   "ghassets.gitcafe.ink": "assets",
 };
 
+/**
+ * github.githubassets.com URLs in HTML attributes and script payloads are
+ * rewritten onto this mirror host root-for-root (like the entry point above)
+ * instead of the request origin's /assets/ path.
+ */
+const ASSETS_MIRROR_HOST = "ghassets.gitcafe.ink";
+
 /** Redirect targets used by release downloads and source archives. */
 const ASSET_REDIRECT_HOSTS = new Set([
   "objects.githubusercontent.com",
@@ -127,8 +134,8 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-// v4: HTML rewriting now covers import maps / embedded JSON payloads.
-const CACHE_VERSION = "v4";
+// v5: github.githubassets.com URLs in HTML/payloads map onto ghassets.gitcafe.ink.
+const CACHE_VERSION = "v5";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -650,6 +657,13 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
     return upstream === dedicatedUpstream ? `${requestUrl.origin}/${rest}` : null;
   }
 
+  // github.githubassets.com URLs always map onto the dedicated mirror host,
+  // so the official paths are preserved verbatim; other upstreams stay
+  // path-based on the request origin.
+  if (upstream === "assets") {
+    return `https://${ASSETS_MIRROR_HOST}/${rest}`;
+  }
+
   return `${requestUrl.origin}${UPSTREAMS[upstream].route}${rest}`;
 }
 
@@ -661,9 +675,11 @@ function rewriteAbsoluteUrl(value: string, requestUrl: URL): string | null {
 function rewriteEmbeddedUrls(value: string, requestUrl: URL): string {
   let out = value;
   for (const [host, upstream] of Object.entries(HOST_TO_UPSTREAM)) {
-    out = out
-      .split(`https://${host}/`)
-      .join(`${requestUrl.origin}${UPSTREAMS[upstream].route}`);
+    const prefix =
+      upstream === "assets"
+        ? `https://${ASSETS_MIRROR_HOST}/`
+        : `${requestUrl.origin}${UPSTREAMS[upstream].route}`;
+    out = out.split(`https://${host}/`).join(prefix);
   }
   return out;
 }
