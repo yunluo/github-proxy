@@ -93,6 +93,8 @@ https://ghcollector.gitcafe.ink    # 统计收集端点，路径与 collector.gi
 
 六个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
 
+Worker 开启了 **Smart Placement**（`[placement] mode = "smart"`）：Cloudflare 会自动把执行位置迁移到离上游 GitHub 更近的数据中心（按流量评估、以天计生效，**无法指定区域**），边缘缓存也随之集中、命中率更高。实际放置位置可在 Dashboard → Workers & Pages → `github-proxy` → Metrics 查看。
+
 ### 4. 可选但强烈建议：GitHub Token
 
 匿名访问 GitHub API 的限额只有 **60 次/小时**，而且代理的所有访客共享 Worker 的出口 IP，很容易触发 `403 API rate limit exceeded`。配置一个只读 PAT 后限额提升到 5,000 次/小时：

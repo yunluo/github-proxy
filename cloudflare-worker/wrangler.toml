@@ -14,5 +14,10 @@ routes = [
   { pattern = "ghcollector.gitcafe.ink", custom_domain = true },
 ]
 
+# Smart Placement moves execution near the upstream origin (GitHub) when
+# traffic volume is sufficient. Region/city selection is not possible.
+[placement]
+mode = "smart"
+
 [observability]
 enabled = true

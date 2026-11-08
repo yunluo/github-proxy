@@ -39,7 +39,7 @@ GitHub
 
 ## Deployment
 
-Single Worker, configured by `cloudflare-worker/wrangler.toml`. No Vercel, database, KV, or Durable Objects are required.
+Single Worker, configured by `cloudflare-worker/wrangler.toml`. No Vercel, database, KV, or Durable Objects are required. Smart Placement (`[placement] mode = "smart"`) lets Cloudflare move execution closer to the GitHub origin automatically; placement decisions are traffic-driven and not region-selectable.
 
 Six custom domains are declared in `routes` and created by `wrangler deploy`:
 

@@ -74,6 +74,7 @@ Never commit `.env`, `.dev.vars`, or tokens. `.gitignore` covers them.
 
 ## Notes
 
+- `[placement] mode = "smart"` lets Cloudflare move execution closer to the GitHub origin automatically; region/city selection is not possible (plain Workers have no region pinning, and Durable Object locationHint was declined). Removing the block reverts to anycast edge execution.
 - `wrangler.toml` deploys the Worker as `github-proxy` (existing production Worker at `github-proxy.yunluo.workers.dev`). All six custom domains — `gh.gitcafe.ink`, `api.gh.gitcafe.ink`, `raw.gh.gitcafe.ink`, `gist.gh.gitcafe.ink`, `ghassets.gitcafe.ink`, `ghcollector.gitcafe.ink` — are declared in `routes`; Wrangler replaces dashboard routes with them, so keep all of them listed.
 - HTML rewriting only runs for `github.com` HTML; raw HTML files and API JSON are not rewritten.
 - GitHub login/private-repo flows are unsupported (cookies stripped).
