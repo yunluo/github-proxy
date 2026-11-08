@@ -15,7 +15,7 @@
 - GitHub 静态资源（JS/CSS/字体/图片，另有路径与官方一致的独立子域 `ghassets.gitcafe.ink`）
 - 头像、README 图片（avatars / camo / user-images）
 - GitHub REST API（`/api/github/...`，以及路径与官方一致的独立子域 `api.gh.gitcafe.ink`）
-- Release 下载、源码 zip/tar 包（自动跟随 GitHub 的签名 CDN 重定向）
+- Release 下载、issue/评论附件、源码 zip/tar 包（自动跟随 GitHub 的签名 CDN 重定向）
 - 多级缓存：HTML 5 分钟、API 1 分钟、Raw 7 天、静态资源 30 天
 - SSRF 防护：目标域名白名单 + 仅允许 HTTPS + 禁止非标准端口
 - 不转发 Cookie，不把用户令牌发送给静态 CDN

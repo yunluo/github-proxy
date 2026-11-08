@@ -135,11 +135,14 @@ const MIRROR_HOST_BY_UPSTREAM: Partial<Record<Upstream, string>> = {
   collector: "ghcollector.gitcafe.ink",
 };
 
-/** Redirect targets used by release downloads and source archives. */
+/** Redirect targets used by release downloads, source archives, and uploaded attachments. */
 const ASSET_REDIRECT_HOSTS = new Set([
   "objects.githubusercontent.com",
   "release-assets.githubusercontent.com",
+  "objects-origin.githubusercontent.com",
   "github-cloud.s3.amazonaws.com",
+  "github-production-user-asset-6210df.s3.amazonaws.com",
+  "github-production-release-asset-2e65be.s3.amazonaws.com",
   "codeload.github.com",
 ]);
 
@@ -474,9 +477,10 @@ async function fetchUpstream(
 }
 
 /**
- * Release downloads and archive links redirect to signed CDN hosts. Follow
- * those hops inside the worker so the download is proxied too, but never
- * follow redirects back into the site (login, trailing-slash, etc.).
+ * Release downloads, archive links, and uploaded attachments (issue/comment
+ * files) redirect to signed CDN hosts. Follow those hops inside the worker so
+ * the download is proxied too, but never follow redirects back into the site
+ * (login, trailing-slash, etc.).
  */
 async function followAssetRedirects(
   request: Request,
