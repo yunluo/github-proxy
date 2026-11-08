@@ -21,11 +21,11 @@ GitHub
 
 1. `GET /{owner}/{repo}` maps to `https://github.com/{owner}/{repo}`.
 2. `/raw/...`, `/gist/...`, `/assets/...`, `/avatars/...`, `/camo/...`, `/user-images/...`, `/media/...`, `/collector/...`, and `/api/github/...` map to their GitHub hosts.
-3. Dedicated mirror hosts map root-for-root: `api.gh.gitcafe.ink/...` to `https://api.github.com/...`, `ghassets.gitcafe.ink/...` to `https://github.githubassets.com/...` and `ghcollector.gitcafe.ink/...` to `https://collector.github.com/...`, so official paths stay unchanged.
+3. Dedicated mirror hosts map root-for-root: `api.gh.gitcafe.ink/...` to `https://api.github.com/...`, `raw.gh.gitcafe.ink/...` to `https://raw.githubusercontent.com/...`, `gist.gh.gitcafe.ink/...` to `https://gist.githubusercontent.com/...`, `ghassets.gitcafe.ink/...` to `https://github.githubassets.com/...` and `ghcollector.gitcafe.ink/...` to `https://collector.github.com/...`, so official paths stay unchanged.
 4. `/?url=...` is accepted for backwards compatibility with the legacy backend contract on the main host.
 5. Requests with `Authorization` or `Range` bypass the Worker cache and are marked `private, no-store` / returned as-is.
 6. Successful `200` responses are stored in the Cache API; the key includes the target URL, request host, `Accept`, `Accept-Language`, and `X-GitHub-Api-Version`.
-7. HTML from `github.com` is streamed through `HTMLRewriter`; links to GitHub hosts are rewritten to the Worker origin. GitHub-hosted URLs embedded in `<script type="importmap">` / `<script type="application/json">` payloads (React import maps, hydration JSON) are rewritten too, so React apps load their modules through the proxy. Asset URLs (`github.githubassets.com`) map onto the dedicated `ghassets.gitcafe.ink` mirror host root-for-root.
+7. HTML from `github.com` is streamed through `HTMLRewriter`; links to GitHub hosts are rewritten to the Worker origin. GitHub-hosted URLs embedded in `<script type="importmap">` / `<script type="application/json">` payloads (React import maps, hydration JSON) are rewritten too, so React apps load their modules through the proxy. Mirror-host upstreams map onto their dedicated hosts root-for-root: asset URLs (`github.githubassets.com`) onto `ghassets.gitcafe.ink`, raw and gist file URLs (`raw.githubusercontent.com` / `gist.githubusercontent.com`) onto `raw.gh.gitcafe.ink` / `gist.gh.gitcafe.ink`.
 8. Redirects to GitHub hosts are rewritten to the Worker origin. Redirects to signed asset CDNs are followed inside the Worker so downloads stay proxied.
 9. API `Link` pagination headers are rewritten to the entry point that served the request (`api.gh.gitcafe.ink` or `gh.gitcafe.ink/api/github/`).
 10. Cookies are dropped in both directions; CSP and frame/cross-origin isolation headers are removed so proxied pages render.
@@ -41,11 +41,13 @@ GitHub
 
 Single Worker, configured by `cloudflare-worker/wrangler.toml`. No Vercel, database, KV, or Durable Objects are required.
 
-Four custom domains are declared in `routes` and created by `wrangler deploy`:
+Six custom domains are declared in `routes` and created by `wrangler deploy`:
 
 - `gh.gitcafe.ink` — web pages, raw files, assets
 - `api.gh.gitcafe.ink` — GitHub API with official paths
+- `raw.gh.gitcafe.ink` — raw.githubusercontent.com with official paths
+- `gist.gh.gitcafe.ink` — gist.githubusercontent.com with official paths
 - `ghassets.gitcafe.ink` — static assets with official paths
 - `ghcollector.gitcafe.ink` — collector.github.com with official paths
 
-Keep all four entries: Wrangler replaces dashboard-managed routes with the configuration, so a missing entry detaches that domain. Deploying route changes requires Zone → Workers Routes write permission in addition to Workers Scripts edit.
+Keep all six entries: Wrangler replaces dashboard-managed routes with the configuration, so a missing entry detaches that domain. Deploying route changes requires Zone → Workers Routes write permission in addition to Workers Scripts edit.

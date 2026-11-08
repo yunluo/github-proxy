@@ -11,7 +11,7 @@
 ## 功能
 
 - GitHub 网页访问：仓库、搜索、Issue、Release 页面
-- Raw 文件、Gist 原始内容
+- Raw 文件、Gist 原始内容（另有路径与官方一致的独立子域 `raw.gh.gitcafe.ink` / `gist.gh.gitcafe.ink`）
 - GitHub 静态资源（JS/CSS/字体/图片，另有路径与官方一致的独立子域 `ghassets.gitcafe.ink`）
 - 头像、README 图片（avatars / camo / user-images）
 - GitHub REST API（`/api/github/...`，以及路径与官方一致的独立子域 `api.gh.gitcafe.ink`）
@@ -26,7 +26,9 @@
 |---|---|
 | `/{owner}/{repo}/...` | `github.com` |
 | `/raw/{owner}/{repo}/...` | `raw.githubusercontent.com` |
+| `raw.gh.gitcafe.ink/...`（独立域名） | `raw.githubusercontent.com`，路径完全一致 |
 | `/gist/...` | `gist.githubusercontent.com` |
+| `gist.gh.gitcafe.ink/...`（独立域名） | `gist.githubusercontent.com`，路径完全一致 |
 | `/assets/...` | `github.githubassets.com` |
 | `ghassets.gitcafe.ink/...`（独立域名） | `github.githubassets.com`，路径完全一致 |
 | `/avatars/...` | `avatars.githubusercontent.com` |
@@ -78,16 +80,18 @@ npm run deploy
 https://github-proxy.<你的子域>.workers.dev
 ```
 
-生产环境已绑定四个自定义域名：
+生产环境已绑定六个自定义域名：
 
 ```text
 https://gh.gitcafe.ink             # 网页、Raw、静态资源
 https://api.gh.gitcafe.ink         # GitHub API，路径与 api.github.com 一致
+https://raw.gh.gitcafe.ink         # Raw 文件，路径与 raw.githubusercontent.com 一致
+https://gist.gh.gitcafe.ink        # Gist 原始内容，路径与 gist.githubusercontent.com 一致
 https://ghassets.gitcafe.ink       # 静态资源，路径与 github.githubassets.com 一致
 https://ghcollector.gitcafe.ink    # 统计收集端点，路径与 collector.github.com 一致
 ```
 
-四个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
+六个域名都写在 `wrangler.toml` 的 `routes` 中，部署时自动创建。`wrangler.toml` 中的 `name` 决定 Worker 名称；如需换名字，修改 `name` 后再部署。
 
 ### 4. 可选但强烈建议：GitHub Token
 
@@ -105,12 +109,14 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 ### 5. 自定义域名
 
-生产环境绑定四个 Custom Domain：
+生产环境绑定六个 Custom Domain：
 
 | 域名 | 用途 |
 |---|---|
 | `gh.gitcafe.ink` | 网页、Raw、静态资源 |
 | `api.gh.gitcafe.ink` | GitHub API，路径与 `api.github.com` 完全一致 |
+| `raw.gh.gitcafe.ink` | Raw 文件，路径与 `raw.githubusercontent.com` 完全一致 |
+| `gist.gh.gitcafe.ink` | Gist 原始内容，路径与 `gist.githubusercontent.com` 完全一致 |
 | `ghassets.gitcafe.ink` | 静态资源，路径与 `github.githubassets.com` 完全一致 |
 | `ghcollector.gitcafe.ink` | 统计收集端点，路径与 `collector.github.com` 完全一致 |
 
@@ -118,7 +124,7 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 
 `gitcafe.ink` 必须与 Worker 在同一个 Cloudflare 账号下。如果部署 token 没有 Zone → Workers Routes 写权限，添加域名会失败；此时改在 Cloudflare Dashboard → Workers & Pages → `github-proxy` → Settings → Domains & Routes 手动添加。
 
-网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；页面 HTML 与脚本 payload 里的 `github.githubassets.com` 资源地址（含 React import map）一律重写到专用域 `ghassets.gitcafe.ink`，`collector.github.com` 统计地址重写到 `ghcollector.gitcafe.ink`。独立镜像子域（`api.gh.gitcafe.ink`、`ghassets.gitcafe.ink`、`ghcollector.gitcafe.ink`）在代码中通过 `DEDICATED_HOSTS` 识别，更换子域时需同步修改。
+网页链接和重定向使用请求的 `Origin`，因此通过 `gh.gitcafe.ink` 访问时链接会自动指向 `https://gh.gitcafe.ink/...`；页面 HTML 与脚本 payload 里的 `github.githubassets.com` 资源地址（含 React import map）一律重写到专用域 `ghassets.gitcafe.ink`，`collector.github.com` 统计地址重写到 `ghcollector.gitcafe.ink`，`raw.githubusercontent.com` / `gist.githubusercontent.com` 地址重写到 `raw.gh.gitcafe.ink` / `gist.gh.gitcafe.ink`。独立镜像子域（`api.gh.gitcafe.ink`、`raw.gh.gitcafe.ink`、`gist.gh.gitcafe.ink`、`ghassets.gitcafe.ink`、`ghcollector.gitcafe.ink`）在代码中通过 `DEDICATED_HOSTS` 识别，更换子域时需同步修改。
 
 ## 使用
 
@@ -126,12 +132,16 @@ Worker 只会在请求 GitHub API 时使用该 Token；静态 CDN 和签名下�
 https://gh.gitcafe.ink/vercel/next.js                       # 仓库页面
 https://gh.gitcafe.ink/search?q=cloudflare                  # 搜索
 https://gh.gitcafe.ink/raw/vercel/next.js/main/package.json # 原始文件
+https://raw.gh.gitcafe.ink/vercel/next.js/main/package.json # 原始文件（与官方路径一致）
+https://gist.gh.gitcafe.ink/user/abc123/raw/file.txt        # Gist 原始内容（与官方路径一致）
 https://gh.gitcafe.ink/api/github/repos/vercel/next.js      # GitHub API（兼容路径）
 https://api.gh.gitcafe.ink/repos/vercel/next.js             # GitHub API（与官方路径一致）
 https://ghassets.gitcafe.ink/assets/...                     # 静态资源（与官方路径一致）
 ```
 
 `ghassets.gitcafe.ink` 与 `github.githubassets.com` 的路径完全一致，把页面里的静态资源地址从 `https://github.githubassets.com/...` 换成 `https://ghassets.gitcafe.ink/...` 即可走代理；通过代理浏览页面时，HTML 与脚本 payload 里的资源地址也会自动重写到该域名，主域名上的 `/assets/...` 兼容路径保持不变。
+
+`raw.gh.gitcafe.ink` 与 `raw.githubusercontent.com` 的路径完全一致（`gist.gh.gitcafe.ink` 同理对应 `gist.githubusercontent.com`），把 raw 地址的域名直接替换即可在脚本、包管理器、`curl` 等场景走代理；通过代理浏览仓库页面时，页面 HTML 与脚本 payload 里的 raw/gist 地址也会自动重写到这两个域名，主域名上的 `/raw/...`、`/gist/...` 兼容路径保持不变。
 
 `api.gh.gitcafe.ink` 上的响应会保留 GitHub 的 `Link` 分页头，但其中的 URL 会重写为代理地址，因此按 `Link` 翻页仍然走代理：
 

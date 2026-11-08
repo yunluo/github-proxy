@@ -16,6 +16,8 @@
  * Dedicated mirror hosts serve their upstream root-for-root, so paths match
  * the official host exactly:
  *   api.gh.gitcafe.ink/...       -> api.github.com
+ *   raw.gh.gitcafe.ink/...       -> raw.githubusercontent.com
+ *   gist.gh.gitcafe.ink/...      -> gist.githubusercontent.com
  *   ghassets.gitcafe.ink/...     -> github.githubassets.com
  *
  * The legacy worker contract is still accepted:
@@ -107,12 +109,15 @@ const ALLOWED_HOSTS = new Set(Object.keys(HOST_TO_UPSTREAM));
  * Dedicated mirror hosts serve their upstream root-for-root, so paths are
  * identical to the official host. For example:
  *   https://api.gh.gitcafe.ink/repos/vercel/next.js
+ *   https://raw.gh.gitcafe.ink/vercel/next.js/main/package.json
  *   https://ghassets.gitcafe.ink/assets/chunk-app.js
  * The main host keeps the path-based routes (/api/github/..., /assets/...)
  * for compatibility.
  */
 const DEDICATED_HOSTS: Record<string, Upstream> = {
   "api.gh.gitcafe.ink": "api",
+  "raw.gh.gitcafe.ink": "raw",
+  "gist.gh.gitcafe.ink": "gist",
   "ghassets.gitcafe.ink": "assets",
   "ghcollector.gitcafe.ink": "collector",
 };
@@ -124,6 +129,8 @@ const DEDICATED_HOSTS: Record<string, Upstream> = {
  * request origin. Keep both tables in sync when adding a mirror host.
  */
 const MIRROR_HOST_BY_UPSTREAM: Partial<Record<Upstream, string>> = {
+  raw: "raw.gh.gitcafe.ink",
+  gist: "gist.gh.gitcafe.ink",
   assets: "ghassets.gitcafe.ink",
   collector: "ghcollector.gitcafe.ink",
 };
@@ -146,8 +153,8 @@ const ROUTES: Array<{ prefix: string; upstream: Upstream }> = [
     .map((upstream) => ({ prefix: UPSTREAMS[upstream].route, upstream })),
 ];
 
-// v6: new collector upstream; githubassets/collector URLs map onto mirror hosts.
-const CACHE_VERSION = "v6";
+// v7: raw/gist URLs in HTML and script payloads map onto their mirror hosts.
+const CACHE_VERSION = "v7";
 const CACHE_HOST = "https://github-proxy-cache.internal";
 const MAX_CACHE_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
